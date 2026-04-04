@@ -65,7 +65,7 @@ config = {
         }
     },
     'windows': {  # Windows游戏请填写此设置
-        #'exe': ['StarRail.exe'],
+        'exe': ['NRC-Win64-Shipping.exe'],
         # optional, if set, will search the exe only
         # 'hwnd_class': 'UnrealWindow', #增加重名检查准确度
         'interaction': ['PostMessage','Pynput', 'Genshin', 'PyDirect','ForegroundPostMessage'], # Genshin:某些操作可以后台, 部分游戏支持 PostMessage:可后台点击, 极少游戏支持 ForegroundPostMessage:前台使用PostMessage Pynput/PyDirect:仅支持前台使用
@@ -111,10 +111,10 @@ config = {
     'my_app': ['src.globals', 'Globals'], #可选. 全局单例对象, 可以存放加载的模型, 使用og.my_app调用
     'onetime_tasks': [  # 用户点击触发的任务
         ["src.tasks.MyOneTimeTask", "MyOneTimeTask"],
+        ["src.tasks.AutoFlowerTask", "AutoFlowerTask"],
         ["ok", "DiagnosisTask"],
     ],
-    'trigger_tasks':[ # 不断执行的触发式任务
-        ["src.tasks.MyTriggerTask", "MyTriggerTask"],
+    'trigger_tasks':[ # 当前项目不使用触发式任务，避免停止单任务后仍有后台循环继续运行
     ],
     'custom_tabs': [
         ['src.ui.MyTab', 'MyTab'], #可选, 自定义UI, 显示在侧边栏
