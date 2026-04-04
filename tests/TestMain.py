@@ -95,6 +95,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
         self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
+        self.task.auto_bow_module.get_max_loop_count = lambda: 10
         self.task.run()
 
         expected_events = []
@@ -209,6 +210,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
         self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
+        self.task.auto_bow_module.get_max_loop_count = lambda: 10
 
         self.task.auto_bow_module.run()
 
@@ -243,6 +245,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
         self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
+        self.task.auto_bow_module.get_max_loop_count = lambda: 10
         og.device_manager.interaction.input_text = record_input_text
 
         self.task.auto_bow_module.run()
@@ -280,6 +283,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
         self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
+        self.task.auto_bow_module.get_max_loop_count = lambda: 10
         og.device_manager.interaction.input_text = record_input_text
 
         self.task.auto_bow_module.run()

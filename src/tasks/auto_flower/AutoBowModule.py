@@ -10,7 +10,7 @@ class AutoBowModule:
     ACTION_SLEEP_MAX = 1.00
     LOOP_SLEEP_MIN = 2.00
     LOOP_SLEEP_MAX = 3.00
-    LOOP_COUNT = 10
+    MAX_LOOP_COUNT = None
 
     def __init__(self, task):
         self.task = task
@@ -20,6 +20,9 @@ class AutoBowModule:
 
     def get_loop_after_sleep(self):
         return random.uniform(self.LOOP_SLEEP_MIN, self.LOOP_SLEEP_MAX)
+
+    def get_max_loop_count(self):
+        return self.MAX_LOOP_COUNT
 
     def should_input_two_as_text(self):
         interaction = getattr(og.device_manager, 'interaction', None)
@@ -56,11 +59,16 @@ class AutoBowModule:
             self.task.interruptible_wait(after_sleep)
 
     def run(self):
+        max_loop_count = self.get_max_loop_count()
+        loop_desc = '无限次' if max_loop_count is None else f'{max_loop_count}次'
         self.task.log_info(
-            f'开始执行自动鞠躬模块: 固定流程 Tab -> 2 -> ESC，循环 {self.LOOP_COUNT} 次'
+            f'开始执行自动鞠躬模块: 固定流程 Tab -> 2 -> ESC，循环 {loop_desc}'
         )
-        for loop_index in range(1, self.LOOP_COUNT + 1):
+        loop_index = 1
+        while True:
             self.task.checkpoint()
+            if max_loop_count is not None and loop_index > max_loop_count:
+                break
             tab_after_sleep = self.get_action_after_sleep()
             two_after_sleep = self.get_action_after_sleep()
             loop_after_sleep = self.get_loop_after_sleep()
@@ -74,6 +82,7 @@ class AutoBowModule:
             self.send_two(after_sleep=two_after_sleep)
             self.task.checkpoint()
             self.task.send_key('esc', down_time=self.KEY_DOWN_TIME)
-            if loop_index < self.LOOP_COUNT and loop_after_sleep > 0:
+            if (max_loop_count is None or loop_index < max_loop_count) and loop_after_sleep > 0:
                 self.task.interruptible_wait(loop_after_sleep)
             self.task.log_info(f'自动鞠躬模块: 第{loop_index}轮完成')
+            loop_index += 1
