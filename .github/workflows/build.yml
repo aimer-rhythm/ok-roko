@@ -61,6 +61,7 @@ jobs:
 
       - name: Sync Repositories # 同步部分代码(deploy.txt中), 合并tag中间更新日志, 到更新库, 以减少用户更新使用的git库大小
         id: sync   # Give the step an ID to access its outputs
+        if: startsWith(github.ref, 'refs/tags/')
         uses: ok-oldking/partial-sync-repo@master
         with:
           repos: |
@@ -73,6 +74,13 @@ jobs:
       - name: Build with PyAppify Action
         id: build-app
         uses: ok-oldking/pyappify-action@master #使用pyappify打包exe
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        if: hashFiles('pyappify_dist/*') != ''
+        with:
+          name: pyappify-dist-${{ github.ref_name }}
+          path: pyappify_dist/*
 
       - name: Release
         uses: softprops/action-gh-release@v2
