@@ -79,13 +79,14 @@ class AutoSummonModule:
         self.send_slot_key(slot_number)
         self.task.log_info(f'自动召唤模块: 槽位{slot_number} 数字键发送完成，执行鼠标左键')
         after_sleep = self.get_click_after_sleep()
-        click_result = self.task.click(
+        click_result = self.task.click_at(
             self.SUMMON_CLICK_X,
             self.SUMMON_CLICK_Y,
             move=True,
             down_time=self.CLICK_DOWN_TIME,
             key='left',
             after_sleep=0,
+            description=f'自动召唤模块: 槽位{slot_number} 左键召唤',
         )
         self.task.log_info(f'自动召唤模块: 槽位{slot_number} 左键点击返回: {click_result}')
         if after_sleep > 0:
