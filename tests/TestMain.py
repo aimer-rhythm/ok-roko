@@ -66,9 +66,9 @@ class TestZAutoFlowerTask(TaskTestCase):
             events.append(('key', key, down_time, after_sleep))
             return True
 
-        def record_click_at(x, y, move=True, move_back=False, down_time=0.04, key='left', after_sleep=0,
-                            description='坐标点击'):
-            events.append(('click_at', round(x, 4), round(y, 4), key, move, down_time, after_sleep, description))
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 4), round(y, 4), key, move, down_time, after_sleep))
             return True
 
         def record_sleep(timeout):
@@ -84,7 +84,7 @@ class TestZAutoFlowerTask(TaskTestCase):
             return [match]
 
         self.task.send_key = record_send_key
-        self.task.click_at = record_click_at
+        self.task.click = record_click
         self.task.sleep = record_sleep
         self.task.wait_ocr = record_wait_ocr
         self.task.screenshot = lambda name=None, frame=None, show_box=False, frame_box=None: events.append(('screenshot', name))
@@ -93,7 +93,8 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_summon_module.get_key_after_sleep = lambda: 1.08
         self.task.auto_summon_module.get_click_after_sleep = lambda: 1.18
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
-        self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
+        self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
+        self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
         self.task.auto_bow_module.get_max_loop_count = lambda: 10
         self.task.run()
@@ -102,13 +103,11 @@ class TestZAutoFlowerTask(TaskTestCase):
         for number in range(1, 7):
             expected_events.append(('key', str(number), 0.04, 0))
             expected_events.append(('sleep', 1.08))
-            expected_events.append((
-                'click_at', 0.5, 0.5, 'left', True, 0.04, 0, f'自动召唤模块: 槽位{number} 左键召唤'
-            ))
+            expected_events.append(('click', 0.5, 0.5, 'left', True, 0.04, 0))
             expected_events.append(('sleep', 1.18))
         for loop_index in range(1, 11):
             expected_events.append(('key', 'tab', 0.04, 0))
-            expected_events.append(('sleep', 0.68))
+            expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
             expected_events.append(('sleep', 0.68))
             expected_events.append(('key', 'esc', 0.04, 0))
@@ -126,15 +125,15 @@ class TestZAutoFlowerTask(TaskTestCase):
         def record_input_text(text):
             events.append(('text', text))
 
-        def record_click_at(x, y, move=True, move_back=False, down_time=0.04, key='left', after_sleep=0,
-                            description='坐标点击'):
-            events.append(('click_at', round(x, 2), round(y, 2), key, move, down_time, after_sleep, description))
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
             return True
 
         self.task.send_key = record_send_key
         self.task.auto_summon_module.should_input_slot_as_text = lambda: True
         og.device_manager.interaction.input_text = record_input_text
-        self.task.click_at = record_click_at
+        self.task.click = record_click
         self.task.interruptible_wait = lambda timeout: None
         self.task.auto_summon_module.get_key_after_sleep = lambda: 1.08
         self.task.auto_summon_module.get_click_after_sleep = lambda: 1.18
@@ -143,7 +142,7 @@ class TestZAutoFlowerTask(TaskTestCase):
 
         self.assertEqual([
             ('key', '2', 0.04, 0),
-            ('click_at', 0.5, 0.5, 'left', True, 0.04, 0, '自动召唤模块: 槽位2 左键召唤'),
+            ('click', 0.5, 0.5, 'left', True, 0.04, 0),
         ], events)
 
     def test_auto_summon_module_falls_back_to_text_input_when_send_key_fails(self):
@@ -159,9 +158,9 @@ class TestZAutoFlowerTask(TaskTestCase):
             events.append(('sleep', timeout))
             return True
 
-        def record_click_at(x, y, move=True, move_back=False, down_time=0.04, key='left', after_sleep=0,
-                            description='坐标点击'):
-            events.append(('click_at', round(x, 2), round(y, 2), key, move, down_time, after_sleep, description))
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
             return True
 
         self.task.send_key = raise_send_key
@@ -169,7 +168,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         og.device_manager.interaction.input_text = record_input_text
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
-        self.task.click_at = record_click_at
+        self.task.click = record_click
         self.task.auto_summon_module.get_key_after_sleep = lambda: 1.08
         self.task.auto_summon_module.get_click_after_sleep = lambda: 1.18
 
@@ -178,7 +177,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.assertEqual([
             ('text', '2'),
             ('sleep', 1.08),
-            ('click_at', 0.5, 0.5, 'left', True, 0.04, 0, '自动召唤模块: 槽位2 左键召唤'),
+            ('click', 0.5, 0.5, 'left', True, 0.04, 0),
             ('sleep', 1.18),
         ], events)
 
@@ -208,7 +207,8 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
-        self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
+        self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
+        self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
         self.task.auto_bow_module.get_max_loop_count = lambda: 10
 
@@ -217,7 +217,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         expected_events = []
         for loop_index in range(1, 11):
             expected_events.append(('key', 'tab', 0.04, 0))
-            expected_events.append(('sleep', 0.68))
+            expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
             expected_events.append(('sleep', 0.68))
             expected_events.append(('key', 'esc', 0.04, 0))
@@ -243,7 +243,8 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
-        self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
+        self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
+        self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
         self.task.auto_bow_module.get_max_loop_count = lambda: 10
         og.device_manager.interaction.input_text = record_input_text
@@ -253,7 +254,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         expected_events = []
         for loop_index in range(1, 11):
             expected_events.append(('key', 'tab', 0.04, 0))
-            expected_events.append(('sleep', 0.68))
+            expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
             expected_events.append(('sleep', 0.68))
             expected_events.append(('key', 'esc', 0.04, 0))
@@ -281,7 +282,8 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
-        self.task.auto_bow_module.get_action_after_sleep = lambda: 0.68
+        self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
+        self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
         self.task.auto_bow_module.get_loop_after_sleep = lambda: 2.68
         self.task.auto_bow_module.get_max_loop_count = lambda: 10
         og.device_manager.interaction.input_text = record_input_text
@@ -291,7 +293,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         expected_events = []
         for loop_index in range(1, 11):
             expected_events.append(('key', 'tab', 0.04, 0))
-            expected_events.append(('sleep', 0.68))
+            expected_events.append(('sleep', 12.68))
             expected_events.append(('text', '2'))
             expected_events.append(('sleep', 0.68))
             expected_events.append(('key', 'esc', 0.04, 0))

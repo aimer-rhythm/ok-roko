@@ -6,8 +6,10 @@ from ok import og
 class AutoBowModule:
     TEXT_INPUT_INTERACTIONS = {'PostMessageInteraction', 'ForegroundPostMessageInteraction'}
     KEY_DOWN_TIME = 0.04
-    ACTION_SLEEP_MIN = 0.50
-    ACTION_SLEEP_MAX = 1.00
+    TAB_TO_TWO_SLEEP_MIN = 12.00
+    TAB_TO_TWO_SLEEP_MAX = 15.00
+    TWO_TO_ESC_SLEEP_MIN = 0.50
+    TWO_TO_ESC_SLEEP_MAX = 1.00
     LOOP_SLEEP_MIN = 2.00
     LOOP_SLEEP_MAX = 3.00
     MAX_LOOP_COUNT = None
@@ -15,8 +17,11 @@ class AutoBowModule:
     def __init__(self, task):
         self.task = task
 
-    def get_action_after_sleep(self):
-        return random.uniform(self.ACTION_SLEEP_MIN, self.ACTION_SLEEP_MAX)
+    def get_tab_to_two_after_sleep(self):
+        return random.uniform(self.TAB_TO_TWO_SLEEP_MIN, self.TAB_TO_TWO_SLEEP_MAX)
+
+    def get_two_to_esc_after_sleep(self):
+        return random.uniform(self.TWO_TO_ESC_SLEEP_MIN, self.TWO_TO_ESC_SLEEP_MAX)
 
     def get_loop_after_sleep(self):
         return random.uniform(self.LOOP_SLEEP_MIN, self.LOOP_SLEEP_MAX)
@@ -69,8 +74,8 @@ class AutoBowModule:
             self.task.checkpoint()
             if max_loop_count is not None and loop_index > max_loop_count:
                 break
-            tab_after_sleep = self.get_action_after_sleep()
-            two_after_sleep = self.get_action_after_sleep()
+            tab_after_sleep = self.get_tab_to_two_after_sleep()
+            two_after_sleep = self.get_two_to_esc_after_sleep()
             loop_after_sleep = self.get_loop_after_sleep()
             self.task.log_info(
                 f'自动鞠躬模块: 第{loop_index}轮开始，Tab后等待{tab_after_sleep:.3f}秒，'
