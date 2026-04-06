@@ -62,7 +62,7 @@ config = {
         },
     },
     "windows": {
-        "exe": ["NRC-Win64-Shipping.exe"],
+        # "exe": ["NRC-Win64-Shipping.exe"],
         # Optional: if set, only this executable is searched.
         # "hwnd_class": "UnrealWindow",
         "interaction": ["PostMessage", "Pynput", "Genshin", "PyDirect", "ForegroundPostMessage"],
