@@ -2,9 +2,14 @@ import os
 
 import numpy as np
 from ok import ConfigOption
+from src.globals import Globals  # noqa: F401
+from src.tasks.AutoFlowerTask import AutoFlowerTask  # noqa: F401
+from src.tasks.MyOneTimeTask import MyOneTimeTask  # noqa: F401
+from src.ui.MyTab import MyTab  # noqa: F401
 
 version = "dev"
 #不需要修改version, Github Action打包会自动修改
+# Force packaged builds to include dynamically referenced app modules.
 
 key_config_option = ConfigOption('Game Hotkey Config', { #全局配置示例
     'Echo Key': 'q',
