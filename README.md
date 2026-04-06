@@ -1,171 +1,203 @@
-## ok-script boilerplate
-ok-script模板项目, 用于fork后快速开始你的项目
+# ok-roko
 
-## ok-script文档和示例代码
+`ok-roko` 是一个基于 `ok-script` 开发的《洛克王国：世界》Windows 自动化项目，当前主要实现的是自动刷花相关流程。
 
-* [游戏自动化入门](https://github.com/ok-oldking/ok-script/blob/master/docs/intro_to_automation/README.md)
-* [快速开始](https://github.com/ok-oldking/ok-script/blob/master/docs/quick_start/README.md)
-* [进阶使用](https://github.com/ok-oldking/ok-script/blob/master/docs/after_quick_start/README.md)
-* [API文档](https://github.com/ok-oldking/ok-script/blob/master/docs/api_doc/README.md)
-* 开发者群: 938132715
+项目仓库：
+`https://github.com/aimer-rhythm/ok-roko`
 
-#### 文件说明
-```
-src/tasks/ 任务类
-src/config.py 项目配置
-tests 自动化测试用例
-deploy.txt 同步到更新库的文件列表, 如tests文件夹
-main.py 入口
-main_debug.py debug入口
-pyappify.yml 打包exe配置文件
-i18n 国际化文件, 可选
-assets cv2使用的template, 需要使用coco格式
-.github/workflows/build.yml 自动化构建任务
-```
+## 当前状态
 
-## 以下为ok-ww示例README.md
+当前主任务为 `自动刷花`。
 
-<div align="center">
-  <h1 align="center">
-    <img src="icon.png" width="200" alt="ok-ww logo"/>
-    <br/>
-    ok-ww
-  </h1> 
-  
-  <p>
-    一个基于图像识别的鸣潮自动化程序，支持后台运行，基于 <a href="https://github.com/ok-oldking/ok-script">ok-script</a> 开发。
-    <br />
-    An image-recognition-based automation tool for Wuthering Waves, with background mode support, developed with <a href="https://github.com/ok-oldking/ok-script">ok-script</a>.
-  </p>
-  
-  <p><i>通过模拟 Windows 用户接口进行操作，无内存读取、无文件修改</i></p>
-</div>
+执行流程：
 
-<!-- Badges -->
-<div align="center">
-  
-![平台](https://img.shields.io/badge/platform-Windows-blue)
-[![GitHub release](https://img.shields.io/github/v/release/ok-oldking/ok-wuthering-waves)](https://github.com/ok-oldking/ok-wuthering-waves/releases)
-[![总下载量](https://img.shields.io/github/downloads/ok-oldking/ok-wuthering-waves/total)](https://github.com/ok-oldking/ok-wuthering-waves/releases)
-[![Discord](https://img.shields.io/discord/296598043787132928?color=5865f2&label=%20Discord)](https://discord.gg/vVyCatEBgA)
+`自动召唤前置检测 -> 自动召唤（按需）-> 自动鞠躬`
 
-</div>
+其中：
 
-### [English Readme](README_en.md) | 中文说明
+- 每次自动鞠躬前，都会先调用一次自动召唤模块。
+- 自动召唤模块会先用 OCR 识别界面中是否存在 `F2`、`F3` 等快捷键文字，用来判断当前是否处于游戏主界面。
+- 如果当前不是主界面，则跳过自动召唤逻辑。
+- 如果当前画面里没有识别到 1 号位精灵区域，也会跳过自动召唤逻辑。
+- 如果识别到 1 号位精灵区域，则会继续检测其是否已召唤。
+- 已召唤时跳过自动召唤，未召唤时按 `1 -> 左键 -> 2 -> 左键 -> 3 -> 左键 -> 4 -> 左键 -> 5 -> 左键 -> 6 -> 左键` 执行自动召唤。
+- 自动鞠躬模块按 `Tab -> 2 -> ESC` 循环执行。
 
-**演示与教程:** [![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://youtu.be/h6P1KWjdnB4)
+## 1 号位精灵召唤检测
 
----
+当前识别逻辑不是直接比较整张游戏截图，而是：
 
-## ⚠️ 免责声明
+1. 使用参考图中左侧的 `数字 1 圆圈` 作为定位锚点。
+2. 在整张游戏画面左上区域搜索该锚点，先定位 1 号位精灵卡片区域。
+3. 根据参考图中右上角图标的相对位置，截取 1 号位精灵卡片右上角的小区域。
+4. 将该小区域分别与：
+   - [`assets/unsummoned.png`](/D:/Project/ok-roko/assets/unsummoned.png)
+   - [`assets/summoned-icon.png`](/D:/Project/ok-roko/assets/summoned-icon.png)
+   进行匹配。
+5. 根据已召唤图标分数判断当前状态。
 
-本软件为外部辅助工具，旨在自动化《鸣潮》的部分游戏流程。它完全通过模拟常规用户界面与游戏交互，遵循相关法律法规。本项目旨在简化用户的重复性操作，不会破坏游戏平衡或提供不公平优势，也绝不会修改任何游戏文件或数据。
+相关代码：
 
-本软件开源、免费，仅供个人学习与交流使用，请勿用于任何商业或营利性目的。开发者团队拥有本项目的最终解释权。因使用本软件而产生的任何问题，均与本项目及开发者无关。
+- [`AutoFlowerTask.py`](/D:/Project/ok-roko/src/tasks/AutoFlowerTask.py)
+- [`AutoSummonModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoSummonModule.py)
+- [`AutoBowModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoBowModule.py)
 
-请注意，根据库洛官方的《鸣潮》公平运营声明：
-> 严禁利用任何第三方工具破坏游戏体验。
-> 我们将严厉打击使用外挂、加速器、作弊软件、宏脚本等违规工具的行为，这些行为包括但不限于自动挂机、技能加速、无敌模式、瞬移、修改游戏数据等操作。
-> 一经查证，我们将视违规情况和次数，采取包括但不限于扣除违规收益、冻结或永久封禁游戏账号等措施。
+## 调试输出
 
-**使用本软件即表示您已阅读、理解并同意以上声明，并自愿承担一切潜在风险。**
+当使用 `main_debug.py` 运行时，每次进行 1 号位精灵状态检测都会输出最新调试图到：
 
-## 🚀 快速开始
+`D:\Project\ok-roko\.tmp\auto-summon-slot-one-debug\latest`
 
-1.  **下载安装包**：从下方的“下载渠道”中选择一个，下载最新的 `ok-ww-win32-China-setup.exe` 安装文件。
-2.  **安装程序**：双击 `ok-ww-win32-China-setup.exe` 文件，并按照安装向导的提示完成安装。
-3.  **运行程序**：安装完成后，从桌面快捷方式或开始菜单启动 `ok-ww` 即可。
+常见文件说明：
 
-## 📥 下载渠道
+- `frame.png`: 原始整帧截图。
+- `frame-boxes.png`: 在整帧截图上画出了搜索框、定位框、图标匹配框。
+- `search-region.png`: 用于查找 1 号位精灵区域的左上搜索区域。
+- `slot-region.png`: 识别出的 1 号位精灵完整区域。
+- `locator-template.png`: 用来定位左侧 `数字 1 圆圈` 的模板。
+- `locator-matched-patch.png`: 当前帧中匹配到的锚点区域。
+- `icon-patch.png`: 从 1 号位精灵右上角截出来用于判断召唤状态的小图。
+- `unsummoned-icon-template.png`: 未召唤图标参考模板。
+- `summoned-icon-template.png`: 已召唤图标参考模板。
+- `unsummoned-matched-patch.png`: 当前帧中与未召唤模板对应的匹配结果。
+- `summoned-matched-patch.png`: 当前帧中与已召唤模板对应的匹配结果。
+- `metadata.json`: 本次识别的分数、坐标和模板来源。
 
-*   **[GitHub](https://github.com/ok-oldking/ok-wuthering-waves/releases)**: 官方发布页，全球访问速度快。（**请下载 `setup.exe` 安装包，而不是 `Source Code` 源码压缩包**）
-*   **[Mirror酱](https://mirrorchyan.com/zh/projects?rid=okww&source=ok-ww-readme)**: 国内镜像，下载可能需要购买其平台的 CD-KEY。
-*   **[夸克网盘](https://pan.quark.cn/s/a1052cec4d13)**: 国内网盘，免费，但需要注册并使用其客户端下载。
+如果识别失败，还会额外生成带时间戳的调试目录，便于回溯单次问题。
 
-## ✨ 主要功能
-<img width="1774" height="1182" alt="QQ_1762960844719" src="https://github.com/user-attachments/assets/c5eb0145-0d45-44f9-85b3-184de0ef20bf" />
+## 当前任务列表
 
-*   **高分辨率支持**: 流畅运行于 4K 及以下所有 16:9 分辨率（最低 1600x900）。部分功能兼容 21:9 等超宽屏。
-*   **后台模式**: 支持游戏窗口最小化或被遮挡时在后台运行，不影响您使用电脑。
-*   **智能识别**: 全角色自动识别，无需手动配置技能序列，一键启动。
-*   **自动静音**: 在后台运行时，可自动将游戏静音。
+项目当前注册的单次任务在 [`src/config.py`](/D:/Project/ok-roko/src/config.py) 中定义：
 
-## 🔧 疑难解答 (Troubleshooting)
+1. `测试任务`
+2. `自动刷花`
+3. `DiagnosisTask`
 
-如果遇到问题，请在提问前按以下步骤逐一排查：
+说明：
 
-1.  **安装路径**：请确保软件安装在**纯英文路径**下（例如 `D:\Games\ok-ww`），不要安装在 `C:\Program Files` 或包含中文字符的文件夹中。
-2.  **杀毒软件**：将软件的安装目录添加到您的杀毒软件（包括 Windows Defender）的**信任区或白名单**中，以防文件被误删或拦截。
-3.  **显示设置**：
-    *   关闭所有显卡滤镜（如 NVIDIA Game Filter）和锐化功能。
-    *   使用游戏默认的亮度设置。
-    *   关闭任何在游戏画面上显示信息的叠加层（如 MSI Afterburner、Fraps 等显示的帧率）。
-4.  **自定义按键**：如果您修改了游戏内的默认按键，请务必在 `ok-ww` 的设置中进行同步配置。仅支持设置中列出的按键。
-5.  **软件版本**：检查并确保您使用的是最新版本的 `ok-ww`。
-6.  **游戏性能**：请确保游戏能稳定在 **60 FPS** 运行。如果帧率不稳定，请尝试降低游戏画质或分辨率。
-7.  **游戏断线**：如频繁遇到与服务器断开连接的问题，可以尝试先手动打开游戏运行5分钟后再启动本工具，或在断线后直接重新登录，不要退出游戏。
-8.  **寻求帮助**：如果以上步骤都无法解决您的问题，请通过社区渠道提交详细的错误报告。
-9.  **关闭自动奔跑**：游戏设置里关闭自动奔跑。
+- `测试任务` 是模板遗留的示例任务，主要用于 OCR、点击和自定义 Tab 联调。
+- `自动刷花` 是当前实际业务任务。
+- `调整游戏时间模块` 已有实现，但在 `AutoFlowerTask` 中默认关闭，不会实际执行。
 
----
+## 自定义界面
 
-## 💻 开发者专区
+项目保留了一个示例自定义 Tab：
 
-### 从源码运行 (Python)
+- [`MyTab.py`](/D:/Project/ok-roko/src/ui/MyTab.py)
 
-本项目仅支持 Python 3.12 版本, 必须以管理员权限启动CMD, PyCharm, VSCode。
+这个页面当前仍是示例内容，按钮点击后会调用 `测试任务`。
 
-```bash
-# 安装或更新依赖
+## 运行环境
+
+- Windows
+- Python `3.12`
+- 目标游戏进程：`NRC-Win64-Shipping.exe`
+- 推荐分辨率比例：`16:9`
+- 最低支持分辨率：`1280 x 720`
+
+项目默认使用：
+
+- OCR：`onnxocr`
+- 截图：`WGC`, `BitBlt_RenderFull`
+- 交互：`PostMessage`, `Pynput`, `Genshin`, `PyDirect`, `ForegroundPostMessage`
+
+## 从源码运行
+
+先安装依赖：
+
+```powershell
 pip install -r requirements.txt --upgrade
+```
 
-# 运行 Release 版本
+运行正式模式：
+
+```powershell
 python main.py
+```
 
-# 运行 Debug 版本
+运行调试模式：
+
+```powershell
 python main_debug.py
 ```
 
-### 命令行参数
+直接启动自动刷花并在任务完成后退出：
 
-您可以通过命令行参数实现自动化启动。
-
-```bash
-# 示例：启动后自动执行第一个任务（一条龙），并在任务完成后退出程序
-ok-ww.exe -t 1 -e
+```powershell
+python main_debug.py -t 2 -e
 ```
 
-*   `-t` 或 `--task`: 启动后自动执行第 N 个任务。`1` 代表任务列表中的第一个。
-*   `-e` 或 `--exit`: 任务执行完毕后自动退出程序。
+说明：
 
-## 💬 加入我们
+- `-t 2` 对应当前任务列表中的第 2 个任务，也就是 `自动刷花`。
+- `-e` 表示任务结束后自动退出。
 
-*   **QQ 交流群**: `462079653` (入群答案: `老王同学OK`)
-*   **QQ 频道**: [点击加入](https://pd.qq.com/s/djmm6l44y) (群满或获取最新资讯)
-*   **开发者群**: `926858895` ( **注意**: 此群仅面向有开发能力、希望参与贡献的开发者，入群前请确保您已能够从源码成功运行项目。)
+## 运行测试
 
-本项目基于 [ok-script](https://github.com/ok-oldking/ok-script) 框架开发，核心代码仅约 3000 行 (Python)，简单易维护。欢迎有兴趣的开发者使用 [ok-script](https://github.com/ok-oldking/ok-script) 开发您自己的自动化项目。
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.TestMain
+```
 
-## 🔗 使用ok-script的项目：
+当前已覆盖的测试主要包括：
 
-* 鸣潮 [https://github.com/ok-oldking/ok-wuthering-wave](https://github.com/ok-oldking/ok-wuthering-waves)
-* 明日方舟:终末地 [https://github.com/ok-oldking/ok-ef](https://github.com/ok-oldking/ok-end-field)
-* 原神(停止维护,
-  但是后台过剧情可用) [https://github.com/ok-oldking/ok-genshin-impact](https://github.com/ok-oldking/ok-genshin-impact)
-* 少前2 [https://github.com/ok-oldking/ok-gf2](https://github.com/ok-oldking/ok-gf2)
-* 星铁 [https://github.com/Shasnow/ok-starrailassistant](https://github.com/Shasnow/ok-starrailassistant)
-* 星痕共鸣 [https://github.com/Sanheiii/ok-star-resonance](https://github.com/Sanheiii/ok-star-resonance)
-* 二重螺旋 [https://github.com/BnanZ0/ok-duet-night-abyss](https://github.com/BnanZ0/ok-duet-night-abyss)
-* 白荆回廊(停止更新) [https://github.com/ok-oldking/ok-baijing](https://github.com/ok-oldking/ok-baijing)
+- 自动鞠躬循环顺序
+- 自动召唤按键与文本输入回退
+- 主界面 OCR 判断
+- 1 号位精灵区域缺失时跳过
+- 1 号位精灵已召唤 / 未召唤识别
+- 调整游戏时间模块的关键流程
 
+## 打包
 
-## ❤️ 赞助与致谢
+打包配置文件：
 
-### 赞助商 (Sponsors)
-*   **EXE 签名**: Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+- [`pyappify.yml`](/D:/Project/ok-roko/pyappify.yml)
 
-### 致谢
-*   [lazydog28/mc_auto_boss](https://github.com/lazydog28/mc_auto_boss)
-*   [ok-oldking/OnnxOCR](https://github.com/ok-oldking/OnnxOCR)
-*   [zhiyiYo/PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)
-*   [Toufool/AutoSplit](https://github.com/Toufool/AutoSplit)
+当前正式包配置：
+
+- 项目名：`ok-roko`
+- Release 仓库地址：`https://github.com/aimer-rhythm/ok-roko`
+
+GitHub Actions 工作流：
+
+- [`.github/workflows/build.yml`](/D:/Project/ok-roko/.github/workflows/build.yml)
+
+## 目录说明
+
+```text
+assets/                    模板图、参考图、识别素材
+configs/                   运行时配置
+icons/                     图标资源
+i18n/                      国际化资源
+logs/                      日志输出
+ok_tasks/                  ok-script 任务相关目录
+screenshots/               截图输出目录
+src/config.py              项目主配置
+src/tasks/                 任务实现
+src/tasks/auto_flower/     自动刷花相关模块
+src/ui/                    自定义界面
+tests/                     单元测试
+main.py                    正式入口
+main_debug.py              调试入口
+pyappify.yml               打包配置
+README.md                  项目说明
+```
+
+## 主要文件
+
+- [`src/config.py`](/D:/Project/ok-roko/src/config.py): 项目配置、任务注册、窗口标题、OCR 与截图配置。
+- [`src/tasks/AutoFlowerTask.py`](/D:/Project/ok-roko/src/tasks/AutoFlowerTask.py): 自动刷花总任务入口。
+- [`src/tasks/auto_flower/AutoSummonModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoSummonModule.py): 自动召唤、主界面判断、1 号位精灵已召唤检测、调试图输出。
+- [`src/tasks/auto_flower/AutoBowModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoBowModule.py): 自动鞠躬循环逻辑。
+- [`src/tasks/auto_flower/AutoAdjustTimeModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoAdjustTimeModule.py): 调整游戏时间模块，当前默认未启用。
+- [`tests/TestMain.py`](/D:/Project/ok-roko/tests/TestMain.py): 当前测试用例。
+
+## 说明
+
+这个仓库已经从 `ok-script boilerplate` 模板切换为当前 `ok-roko` 项目，但仍保留少量模板示例代码，后续可以继续清理：
+
+- `测试任务`
+- `MyTab`
+- 部分示例配置项
+
+当前如果要继续迭代业务功能，建议优先围绕 `src/tasks/auto_flower/` 目录展开。
