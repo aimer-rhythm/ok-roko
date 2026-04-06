@@ -7,13 +7,19 @@ on:
       - 'v*'
   workflow_dispatch:
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
 
     runs-on: windows-latest
+    timeout-minutes: 90
 
     env:
       PYTHONIOENCODING: 'UTF-8'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
 
     strategy:
       matrix:
@@ -32,12 +38,16 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            .requirements.install.txt
       - name: Set UTF-8 encoding
         run: |
           set PYTHONIOENCODING=utf-8
@@ -46,7 +56,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
       - name: inline_ok_requirements #把ok-script加入源码, 从requirements.txt中删除以提高升级更新速度
         run: |
