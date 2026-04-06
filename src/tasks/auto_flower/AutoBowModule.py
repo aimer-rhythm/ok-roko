@@ -74,6 +74,7 @@ class AutoBowModule:
             self.task.checkpoint()
             if max_loop_count is not None and loop_index > max_loop_count:
                 break
+            self.task.auto_summon_module.run()
             tab_after_sleep = self.get_tab_to_two_after_sleep()
             two_after_sleep = self.get_two_to_esc_after_sleep()
             loop_after_sleep = self.get_loop_after_sleep()

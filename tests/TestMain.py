@@ -90,8 +90,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.screenshot = lambda name=None, frame=None, show_box=False, frame_box=None: events.append(('screenshot', name))
         self.task.scroll_relative = lambda x, y, count: events.append(('scroll_relative', round(x, 2), round(y, 2), count))
         self.task.interruptible_wait = record_sleep
-        self.task.auto_summon_module.get_key_after_sleep = lambda: 1.08
-        self.task.auto_summon_module.get_click_after_sleep = lambda: 1.18
+        self.task.auto_summon_module.run = lambda: events.append(('summon',))
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
         self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
         self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
@@ -100,12 +99,8 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.run()
 
         expected_events = []
-        for number in range(1, 7):
-            expected_events.append(('key', str(number), 0.04, 0))
-            expected_events.append(('sleep', 1.08))
-            expected_events.append(('click', 0.5, 0.5, 'left', True, 0.04, 0))
-            expected_events.append(('sleep', 1.18))
         for loop_index in range(1, 11):
+            expected_events.append(('summon',))
             expected_events.append(('key', 'tab', 0.04, 0))
             expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
@@ -192,6 +187,150 @@ class TestZAutoFlowerTask(TaskTestCase):
         with self.assertRaises(RuntimeError):
             self.task.auto_summon_module.send_slot_key(2)
 
+    def test_auto_summon_module_skips_when_slot_one_already_summoned(self):
+        events = []
+
+        def record_send_key(key, down_time=0.02, interval=-1, after_sleep=0):
+            events.append(('key', key, down_time, after_sleep))
+            return True
+
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
+            return True
+
+        self.task.send_key = record_send_key
+        self.task.click = record_click
+        self.task.ocr = lambda *args, **kwargs: ['F2']
+        self.task.auto_summon_module.try_locate_slot_one_region = lambda frame=None: (
+            np.zeros((1080, 1920, 3), dtype=np.uint8),
+            {
+                'score': 0.99,
+                'box': None,
+            },
+            True,
+        )
+        self.task.auto_summon_module.detect_slot_one_summon_state = lambda *args, **kwargs: {
+            'state': 'summoned',
+            'score': 0.99,
+            'box': None,
+        }
+
+        self.task.auto_summon_module.run()
+
+        self.assertEqual([], events)
+
+    def test_auto_summon_module_skips_when_not_on_main_interface(self):
+        events = []
+
+        def record_send_key(key, down_time=0.02, interval=-1, after_sleep=0):
+            events.append(('key', key, down_time, after_sleep))
+            return True
+
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
+            return True
+
+        self.task.send_key = record_send_key
+        self.task.click = record_click
+        self.task.ocr = lambda *args, **kwargs: []
+        self.task.auto_summon_module.try_locate_slot_one_region = lambda frame=None: (_ for _ in ()).throw(
+            AssertionError('should not try to locate slot one region when not on main interface')
+        )
+        self.task.auto_summon_module.run = type(self.task.auto_summon_module).run.__get__(
+            self.task.auto_summon_module,
+            type(self.task.auto_summon_module),
+        )
+
+        self.task.auto_summon_module.run()
+
+        self.assertEqual([], events)
+
+    def test_auto_summon_module_skips_when_slot_one_region_is_missing(self):
+        events = []
+
+        def record_send_key(key, down_time=0.02, interval=-1, after_sleep=0):
+            events.append(('key', key, down_time, after_sleep))
+            return True
+
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
+            return True
+
+        self.task.send_key = record_send_key
+        self.task.click = record_click
+        self.task.ocr = lambda *args, **kwargs: ['F2']
+        self.task.auto_summon_module.try_locate_slot_one_region = lambda frame=None: (
+            np.zeros((1080, 1920, 3), dtype=np.uint8),
+            {
+                'score': 0.12,
+                'box': None,
+            },
+            False,
+        )
+
+        self.task.auto_summon_module.run = type(self.task.auto_summon_module).run.__get__(
+            self.task.auto_summon_module,
+            type(self.task.auto_summon_module),
+        )
+
+        self.task.auto_summon_module.run()
+
+        self.assertEqual([], events)
+
+    def test_auto_summon_module_runs_when_slot_one_unsummoned(self):
+        events = []
+        state_checks = iter([
+            {'state': 'unsummoned', 'score': 0.98, 'box': None},
+            {'state': 'summoned', 'score': 0.99, 'box': None},
+        ])
+
+        def record_send_key(key, down_time=0.02, interval=-1, after_sleep=0):
+            events.append(('key', key, down_time, after_sleep))
+            return True
+
+        def record_click(x=-1, y=-1, move_back=False, name=None, interval=-1, move=True,
+                         down_time=0.01, after_sleep=0, key='left'):
+            events.append(('click', round(x, 2), round(y, 2), key, move, down_time, after_sleep))
+            return True
+
+        def record_sleep(timeout):
+            events.append(('sleep', timeout))
+            return True
+
+        self.task.send_key = record_send_key
+        self.task.click = record_click
+        self.task.interruptible_wait = record_sleep
+        self.task.ocr = lambda *args, **kwargs: ['F2']
+        self.task.auto_summon_module.get_key_after_sleep = lambda: 1.08
+        self.task.auto_summon_module.get_click_after_sleep = lambda: 1.18
+        self.task.auto_summon_module.SUMMON_RECHECK_WAIT = 0
+        self.task.auto_summon_module.try_locate_slot_one_region = lambda frame=None: (
+            np.zeros((1080, 1920, 3), dtype=np.uint8),
+            {
+                'score': 0.99,
+                'box': None,
+            },
+            True,
+        )
+        self.task.auto_summon_module.detect_slot_one_summon_state = lambda *args, **kwargs: next(state_checks)
+        self.task.auto_summon_module.run = type(self.task.auto_summon_module).run.__get__(
+            self.task.auto_summon_module,
+            type(self.task.auto_summon_module),
+        )
+
+        self.task.auto_summon_module.run()
+
+        expected_events = []
+        for number in range(1, 7):
+            expected_events.append(('key', str(number), 0.04, 0))
+            expected_events.append(('sleep', 1.08))
+            expected_events.append(('click', 0.5, 0.5, 'left', True, 0.04, 0))
+            expected_events.append(('sleep', 1.18))
+        self.assertEqual(expected_events, events)
+
     def test_auto_bow_module_run_sequence(self):
         events = []
 
@@ -206,6 +345,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.send_key = record_send_key
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
+        self.task.auto_summon_module.run = lambda: events.append(('summon',))
         self.task.auto_bow_module.should_input_two_as_text = lambda: False
         self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
         self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
@@ -216,6 +356,7 @@ class TestZAutoFlowerTask(TaskTestCase):
 
         expected_events = []
         for loop_index in range(1, 11):
+            expected_events.append(('summon',))
             expected_events.append(('key', 'tab', 0.04, 0))
             expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
@@ -224,6 +365,43 @@ class TestZAutoFlowerTask(TaskTestCase):
             if loop_index < 10:
                 expected_events.append(('sleep', 2.68))
         self.assertEqual(expected_events, events)
+
+    def test_auto_bow_module_detects_unsummoned_slot_one_icon(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        template = self.task.auto_summon_module.resize_reference_for_frame(
+            frame,
+            self.task.auto_summon_module.slot_one_unsummoned_reference,
+        )
+        x = 320
+        y = 180
+        height, width = template.shape[:2]
+        frame[y:y + height, x:x + width] = template
+
+        match = self.task.auto_summon_module.detect_slot_one_summon_state(frame=frame)
+
+        self.assertEqual('unsummoned', match['state'])
+        self.assertLess(match['score'], self.task.auto_summon_module.SLOT_ONE_STATE_MIN_CONFIDENCE)
+        self.assertLessEqual(abs(match['region_box'].x - x), 5)
+        self.assertLessEqual(abs(match['region_box'].y - y), 5)
+        self.assertGreaterEqual(match['locate_score'], self.task.auto_summon_module.SLOT_ONE_LOCATE_MIN_CONFIDENCE)
+
+    def test_auto_bow_module_detects_summoned_slot_one_icon(self):
+        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        template = self.task.auto_summon_module.resize_reference_for_frame(
+            frame,
+            self.task.auto_summon_module.slot_one_summoned_reference,
+        )
+        x = 440
+        y = 260
+        height, width = template.shape[:2]
+        frame[y:y + height, x:x + width] = template
+
+        match = self.task.auto_summon_module.detect_slot_one_summon_state(frame=frame)
+
+        self.assertEqual('summoned', match['state'])
+        self.assertGreaterEqual(match['score'], self.task.auto_summon_module.SLOT_ONE_STATE_MIN_CONFIDENCE)
+        self.assertLessEqual(abs(match['region_box'].x - x), 1)
+        self.assertLessEqual(abs(match['region_box'].y - y), 1)
 
     def test_auto_bow_module_prefers_send_key_for_two(self):
         events = []
@@ -242,6 +420,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.send_key = record_send_key
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
+        self.task.auto_summon_module.run = lambda: events.append(('summon',))
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
         self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
         self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
@@ -253,6 +432,7 @@ class TestZAutoFlowerTask(TaskTestCase):
 
         expected_events = []
         for loop_index in range(1, 11):
+            expected_events.append(('summon',))
             expected_events.append(('key', 'tab', 0.04, 0))
             expected_events.append(('sleep', 12.68))
             expected_events.append(('key', '2', 0.04, 0))
@@ -281,6 +461,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.send_key = raise_send_key
         self.task.sleep = record_sleep
         self.task.interruptible_wait = record_sleep
+        self.task.auto_summon_module.run = lambda: events.append(('summon',))
         self.task.auto_bow_module.should_input_two_as_text = lambda: True
         self.task.auto_bow_module.get_tab_to_two_after_sleep = lambda: 12.68
         self.task.auto_bow_module.get_two_to_esc_after_sleep = lambda: 0.68
@@ -292,6 +473,7 @@ class TestZAutoFlowerTask(TaskTestCase):
 
         expected_events = []
         for loop_index in range(1, 11):
+            expected_events.append(('summon',))
             expected_events.append(('key', 'tab', 0.04, 0))
             expected_events.append(('sleep', 12.68))
             expected_events.append(('text', '2'))
