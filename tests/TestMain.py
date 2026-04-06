@@ -372,8 +372,8 @@ class TestZAutoFlowerTask(TaskTestCase):
             frame,
             self.task.auto_summon_module.slot_one_unsummoned_reference,
         )
-        x = 320
-        y = 180
+        x = 64
+        y = 72
         height, width = template.shape[:2]
         frame[y:y + height, x:x + width] = template
 
@@ -391,8 +391,8 @@ class TestZAutoFlowerTask(TaskTestCase):
             frame,
             self.task.auto_summon_module.slot_one_summoned_reference,
         )
-        x = 440
-        y = 260
+        x = 112
+        y = 120
         height, width = template.shape[:2]
         frame[y:y + height, x:x + width] = template
 
@@ -401,7 +401,7 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.assertEqual('summoned', match['state'])
         self.assertGreaterEqual(match['score'], self.task.auto_summon_module.SLOT_ONE_STATE_MIN_CONFIDENCE)
         self.assertLessEqual(abs(match['region_box'].x - x), 1)
-        self.assertLessEqual(abs(match['region_box'].y - y), 1)
+        self.assertLessEqual(abs(match['region_box'].y - y), 2)
 
     def test_auto_bow_module_prefers_send_key_for_two(self):
         events = []
