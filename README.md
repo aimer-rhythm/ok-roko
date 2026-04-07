@@ -167,6 +167,7 @@ GitHub Actions 工作流：
 ```text
 assets/                    模板图、参考图、识别素材
 configs/                   运行时配置
+docs/                      开发文档与 ok-script 相关说明
 icons/                     图标资源
 i18n/                      国际化资源
 logs/                      日志输出
@@ -200,4 +201,9 @@ README.md                  项目说明
 - `MyTab`
 - 部分示例配置项
 
-当前如果要继续迭代业务功能，建议优先围绕 `src/tasks/auto_flower/` 目录展开。
+后续开发请优先阅读并遵循 [`docs/`](/D:/Project/ok-roko/docs) 目录下的文档，当前已包含：
+
+- [`ok-script API文档.md`](/D:/Project/ok-roko/docs/ok-script%20API文档.md)
+- [`ok-script 进阶使用指南.md`](/D:/Project/ok-roko/docs/ok-script%20进阶使用指南.md)
+
+在继续迭代业务功能时，代码实现建议优先围绕 `src/tasks/auto_flower/` 目录展开，并以 `docs/` 目录中的文档约定为准。
