@@ -13,3 +13,10 @@ profiles:
   - name: "Debug"
     main_script: "main_debug.py"
     requirements: "requirements.txt"
+
+  - name: Build with PyAppify Action
+    id: build-app
+    uses: ok-oldking/pyappify-action@master
+    with:
+      # 使用上一个稳定版本的 Release 来获取已打包的启动器，从而跳过耗时的打包过程
+      use_release: https://api.github.com/repos/aimer-rhythm/ok-roko/releases/tags/v0.1.8
