@@ -68,3 +68,4 @@ working_images/
 .ace-tool/
 .tmp/
 .pip-cache/
+.label-studio/
