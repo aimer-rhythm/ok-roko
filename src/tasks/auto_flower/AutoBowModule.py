@@ -6,6 +6,9 @@ from ok import og
 class AutoBowModule:
     TEXT_INPUT_INTERACTIONS = {'PostMessageInteraction', 'ForegroundPostMessageInteraction'}
     KEY_DOWN_TIME = 0.04
+    TAB_TEXT = 'Tab'
+    TAB_TEXT_WAIT_TIMEOUT = 1.00
+    TAB_RETRY_INTERVAL = 1.00
     TAB_TO_TWO_SLEEP_MIN = 12.00
     TAB_TO_TWO_SLEEP_MAX = 15.00
     TWO_TO_ESC_SLEEP_MIN = 0.50
@@ -28,6 +31,34 @@ class AutoBowModule:
 
     def get_max_loop_count(self):
         return self.MAX_LOOP_COUNT
+
+    def wait_for_tab_text(self):
+        self.task.checkpoint()
+        self.task.log_info('自动鞠躬模块: 等待界面出现 Tab 文字')
+        result = self.task.wait_ocr(
+            match=self.TAB_TEXT,
+            time_out=self.TAB_TEXT_WAIT_TIMEOUT,
+            raise_if_not_found=False,
+            log=True,
+        )
+        if result:
+            self.task.log_info('自动鞠躬模块: 已识别到 Tab 文字')
+        return result
+
+    def ensure_tab_ready(self):
+        attempt = 1
+        while True:
+            self.task.checkpoint()
+            self.task.log_info(f'自动鞠躬模块: 第{attempt}次发送 Tab')
+            self.task.send_key('tab', down_time=self.KEY_DOWN_TIME, after_sleep=0)
+            if self.wait_for_tab_text():
+                return
+            self.task.log_info(
+                f'自动鞠躬模块: 第{attempt}次发送 Tab 后未识别到 Tab 文字，'
+                f'{self.TAB_RETRY_INTERVAL:.3f}秒后重试'
+            )
+            self.task.interruptible_wait(self.TAB_RETRY_INTERVAL)
+            attempt += 1
 
     def should_input_two_as_text(self):
         interaction = getattr(og.device_manager, 'interaction', None)
@@ -82,7 +113,7 @@ class AutoBowModule:
                 f'自动鞠躬模块: 第{loop_index}轮开始，Tab后等待{tab_after_sleep:.3f}秒，'
                 f'数字2后等待{two_after_sleep:.3f}秒，轮次等待{loop_after_sleep:.3f}秒'
             )
-            self.task.send_key('tab', down_time=self.KEY_DOWN_TIME, after_sleep=0)
+            self.ensure_tab_ready()
             if tab_after_sleep > 0:
                 self.task.interruptible_wait(tab_after_sleep)
             self.send_two(after_sleep=two_after_sleep)
