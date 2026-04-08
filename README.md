@@ -11,30 +11,35 @@
 
 执行流程：
 
-`自动召唤前置检测 -> 自动召唤（按需）-> 自动鞠躬`
+`自动召唤前置检测 -> 1-6 槽位召唤状态识别 -> 按需补召 -> 全量复检补召 -> 自动鞠躬`
 
 其中：
 
 - 每次自动鞠躬前，都会先调用一次自动召唤模块。
 - 自动召唤模块会先用 OCR 识别界面中是否存在 `F2`、`F3` 等快捷键文字，用来判断当前是否处于游戏主界面。
 - 如果当前不是主界面，则跳过自动召唤逻辑。
-- 如果当前画面里没有识别到 1 号位精灵区域，也会跳过自动召唤逻辑。
-- 如果识别到 1 号位精灵区域，则会继续检测其是否已召唤。
-- 已召唤时跳过自动召唤，未召唤时按 `1 -> 左键 -> 2 -> 左键 -> 3 -> 左键 -> 4 -> 左键 -> 5 -> 左键 -> 6 -> 左键` 执行自动召唤。
-- 自动鞠躬模块按 `Tab -> 2 -> ESC` 循环执行。
+- 进入主界面后，会基于 `assets/result.json` 中 1-6 号槽位的标注框，对 6 个槽位逐个识别当前是否已召唤。
+- 如果 6 个槽位都已召唤，则直接跳过自动召唤模块。
+- 如果存在未召唤槽位或识别异常槽位，则只对这些目标槽位执行 `数字键 -> 左键` 的定向召唤。
+- 首轮召唤完成后，还会再次全量复检 6 个槽位；若仍有未召唤或识别异常槽位，会继续补召直到全部识别为已召唤。
+- 自动鞠躬模块按 `Tab -> 2 -> ESC` 循环执行；如果 `2` 的按键发送失败，会在指定交互模式下回退为文本输入。
 
-## 1 号位精灵召唤检测
+## 1-6 槽位精灵召唤检测
 
 当前识别逻辑不是直接比较整张游戏截图，而是：
 
-1. 使用参考图中左侧的 `数字 1 圆圈` 作为定位锚点。
-2. 在整张游戏画面左上区域搜索该锚点，先定位 1 号位精灵卡片区域。
-3. 根据参考图中右上角图标的相对位置，截取 1 号位精灵卡片右上角的小区域。
-4. 将该小区域分别与：
-   - [`assets/unsummoned.png`](/D:/Project/ok-roko/assets/unsummoned.png)
-   - [`assets/summoned-icon.png`](/D:/Project/ok-roko/assets/summoned-icon.png)
-   进行匹配。
-5. 根据已召唤图标分数判断当前状态。
+1. 启动时读取 [`assets/result.json`](/D:/Project/ok-roko/assets/result.json) 中 1-6 号槽位的已召唤标注框。
+2. 按当前分辨率把标注框缩放到实时截图上，得到每个槽位对应的目标区域。
+3. 以目标区域为中心扩出一圈搜索边距，截取每个槽位的小范围图像作为图标搜索区。
+4. 在该搜索区内查找对应槽位的已召唤特征：
+   - `first_summoned`
+   - `second_summoned`
+   - `third_summoned`
+   - `fourth_summoned`
+   - `five_summoned`
+   - `six_summoned`
+5. 已召唤特征匹配分数大于等于 `0.80` 时判定为 `summoned`，否则判定为 `unsummoned`。
+6. 单个槽位召唤后会立即复检；若仍未召唤，或复检时发生识别异常，则等待后重试，直到该槽位识别为已召唤。
 
 相关代码：
 
@@ -44,26 +49,27 @@
 
 ## 调试输出
 
-当使用 `main_debug.py` 运行时，每次进行 1 号位精灵状态检测都会输出最新调试图到：
+当使用 `main_debug.py` 运行，且某个槽位状态识别发生异常时，会额外输出一份调试材料到：
 
-`D:\Project\ok-roko\.tmp\auto-summon-slot-one-debug\latest`
+`D:\Project\ok-roko\.tmp\auto-summon-slot-debug\<时间戳目录>`
 
 常见文件说明：
 
 - `frame.png`: 原始整帧截图。
-- `frame-boxes.png`: 在整帧截图上画出了搜索框、定位框、图标匹配框。
-- `search-region.png`: 用于查找 1 号位精灵区域的左上搜索区域。
-- `slot-region.png`: 识别出的 1 号位精灵完整区域。
-- `locator-template.png`: 用来定位左侧 `数字 1 圆圈` 的模板。
-- `locator-matched-patch.png`: 当前帧中匹配到的锚点区域。
-- `icon-patch.png`: 从 1 号位精灵右上角截出来用于判断召唤状态的小图。
-- `unsummoned-icon-template.png`: 未召唤图标参考模板。
-- `summoned-icon-template.png`: 已召唤图标参考模板。
-- `unsummoned-matched-patch.png`: 当前帧中与未召唤模板对应的匹配结果。
-- `summoned-matched-patch.png`: 当前帧中与已召唤模板对应的匹配结果。
-- `metadata.json`: 本次识别的分数、坐标和模板来源。
+- `frame-boxes.png`: 在整帧截图上画出了槽位区域框、图标搜索框、匹配框。
+- `search-region.png`: 当前槽位对应的搜索区域。
+- `slot-region.png`: 当前槽位的标注框截图。
+- `locator-template.png`: 当前槽位的区域模板。
+- `locator-mask.png`: 当前槽位的模板遮罩。
+- `locator-matched-patch.png`: 当前帧中对应槽位的匹配区域。
+- `icon-patch.png`: 当前槽位用于查找已召唤特征的小范围图像。
+- `summoned-matched-patch.png`: 当前帧中已召唤特征的实际匹配结果。
+- `metadata.json`: 本次识别的槽位编号、分数、状态、坐标、异常原因与模板来源。
 
-如果识别失败，还会额外生成带时间戳的调试目录，便于回溯单次问题。
+说明：
+
+- 调试材料按时间戳单独建目录，不会覆盖历史记录。
+- 正常识别通过时不会自动生成这一批诊断文件。
 
 ## 当前任务列表
 
@@ -141,10 +147,12 @@ python main_debug.py -t 2 -e
 当前已覆盖的测试主要包括：
 
 - 自动鞠躬循环顺序
+- Tab 未就绪时的重试逻辑
 - 自动召唤按键与文本输入回退
 - 主界面 OCR 判断
-- 1 号位精灵区域缺失时跳过
-- 1 号位精灵已召唤 / 未召唤识别
+- 1-6 号槽位已召唤 / 未召唤识别
+- 未召唤槽位的定向召唤与全量补召
+- 召唤后复检失败时的重试与修复
 - 调整游戏时间模块的关键流程
 
 ## 打包
@@ -161,6 +169,13 @@ python main_debug.py -t 2 -e
 GitHub Actions 工作流：
 
 - [`.github/workflows/build.yml`](/D:/Project/ok-roko/.github/workflows/build.yml)
+
+当前发布触发方式：
+
+- 推送普通提交只会更新代码，不会自动打包 Release。
+- 推送符合 `v*` 格式的 Git tag 时，会触发 `Build` 工作流。
+- 工作流会在 `windows-latest` 上安装依赖、执行 `tests/` 下的单元测试、调用 `pyappify-action` 打包，并将 `pyappify_dist/*` 上传到对应 GitHub Release。
+- 也可以手动使用 `workflow_dispatch` 触发构建，但自动发布 Release 仍依赖 tag 引用。
 
 ## 目录说明
 
@@ -188,7 +203,7 @@ README.md                  项目说明
 
 - [`src/config.py`](/D:/Project/ok-roko/src/config.py): 项目配置、任务注册、窗口标题、OCR 与截图配置。
 - [`src/tasks/AutoFlowerTask.py`](/D:/Project/ok-roko/src/tasks/AutoFlowerTask.py): 自动刷花总任务入口。
-- [`src/tasks/auto_flower/AutoSummonModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoSummonModule.py): 自动召唤、主界面判断、1 号位精灵已召唤检测、调试图输出。
+- [`src/tasks/auto_flower/AutoSummonModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoSummonModule.py): 自动召唤、主界面判断、1-6 号槽位状态识别、按需补召、复检修复、调试图输出。
 - [`src/tasks/auto_flower/AutoBowModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoBowModule.py): 自动鞠躬循环逻辑。
 - [`src/tasks/auto_flower/AutoAdjustTimeModule.py`](/D:/Project/ok-roko/src/tasks/auto_flower/AutoAdjustTimeModule.py): 调整游戏时间模块，当前默认未启用。
 - [`tests/TestMain.py`](/D:/Project/ok-roko/tests/TestMain.py): 当前测试用例。
