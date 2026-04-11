@@ -20,11 +20,9 @@ class AutoFlowerTask(MyBaseTask):
 
     def run(self):
         self.log_info('开始执行自动刷花任务', notify=True)
-        self.log_memory('自动刷花任务开始', key='auto-flower/run', min_interval=0)
         if self.ADJUST_TIME_ENABLED:
             self.auto_adjust_time_module.run()
         else:
             self.log_info('自动刷花任务: 调整游戏时间模块暂时关闭，跳过执行')
         self.auto_bow_module.run()
-        self.log_memory('自动刷花任务结束', key='auto-flower/run', min_interval=0)
         self.log_info('自动刷花任务执行完成', notify=True)
