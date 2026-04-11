@@ -12,6 +12,8 @@ from ok import Box, og
 class AutoSummonModule:
     TEXT_INPUT_INTERACTIONS = {'PostMessageInteraction', 'ForegroundPostMessageInteraction'}
     MAIN_INTERFACE_HOTKEY_PATTERN = re.compile(r'F[2-6]')
+    MAIN_INTERFACE_TEMPLATE_SEARCH_MARGIN_RATIO = 0.75
+    MAIN_INTERFACE_TEMPLATE_MATCH_THRESHOLD = 0.75
     SLOT_SEQUENCE = (1, 2, 3, 4, 5, 6)
     SLOT_FEATURE_NAMES = {
         1: 'first_summoned',
@@ -54,6 +56,8 @@ class AutoSummonModule:
         )
         self.slot_summoned_references = self.build_slot_summoned_references()
         self.slot_one_summoned_reference = self.slot_summoned_references[1]
+        self._main_interface_indicator_template = None
+        self._main_interface_indicator_box = None
 
     def validate_slot_number(self, slot_number):
         if not self.SLOT_MIN <= slot_number <= self.SLOT_MAX:
@@ -229,13 +233,72 @@ class AutoSummonModule:
 
     def is_main_interface(self):
         self.task.checkpoint()
+        cached_result = self.find_cached_main_interface_indicator()
+        if cached_result is not None:
+            self.task.log_info('自动召唤模块: 已通过缓存模板识别到 F2/F3 等快捷键文字，判定当前为主界面')
+            return True
         self.task.log_info('自动召唤模块: OCR识别当前界面是否存在 F2/F3 等快捷键文字')
-        result = self.task.ocr(match=self.MAIN_INTERFACE_HOTKEY_PATTERN, log=True)
+        # Use localized OCR (bottom right quadrant) instead of full screen to reduce memory usage
+        result = self.task.ocr(
+            x=0.5, y=0.5, to_x=1.0, to_y=1.0,
+            match=self.MAIN_INTERFACE_HOTKEY_PATTERN,
+            log=True
+        )
         if result:
+            self.cache_main_interface_indicator(result)
             self.task.log_info('自动召唤模块: 已识别到 F2/F3 等快捷键文字，判定当前为主界面')
+            import gc
+            gc.collect()
         else:
             self.task.log_info('自动召唤模块: 未识别到 F2/F3 等快捷键文字，判定当前不是主界面')
         return bool(result)
+
+    def cache_main_interface_indicator(self, boxes, frame=None):
+        if not boxes:
+            return False
+        candidate_boxes = [
+            box
+            for box in boxes
+            if hasattr(box, 'crop_frame') and all(hasattr(box, attr) for attr in ('x', 'y', 'width', 'height'))
+        ]
+        if not candidate_boxes:
+            return False
+        frame = self.task.current_bgr_frame() if frame is None else self.task.normalize_bgr_image(frame)
+        if frame is None:
+            return False
+        for box in candidate_boxes:
+            template = self.task.capture_box_template(box, frame=frame)
+            if template is None:
+                continue
+            self._main_interface_indicator_template = template
+            self._main_interface_indicator_box = Box(
+                int(box.x),
+                int(box.y),
+                int(box.width),
+                int(box.height),
+                confidence=float(getattr(box, 'confidence', 1.0)),
+                name='main-interface-hotkey-cache',
+            )
+            return True
+        return False
+
+    def find_cached_main_interface_indicator(self):
+        if self._main_interface_indicator_template is None or self._main_interface_indicator_box is None:
+            return None
+        frame = self.task.current_bgr_frame()
+        if frame is None:
+            return None
+        match = self.task.find_template_match(
+            self._main_interface_indicator_template,
+            self._main_interface_indicator_box,
+            frame=frame,
+            search_margin_ratio=self.MAIN_INTERFACE_TEMPLATE_SEARCH_MARGIN_RATIO,
+            threshold=self.MAIN_INTERFACE_TEMPLATE_MATCH_THRESHOLD,
+            name='main-interface-hotkey-cache',
+        )
+        if match is not None:
+            self.cache_main_interface_indicator([match], frame=frame)
+        return match
 
     def save_debug_image(self, output_path, image):
         if not cv2.imwrite(str(output_path), image):
@@ -455,6 +518,12 @@ class AutoSummonModule:
         self.task.checkpoint()
         slot_number = int(slot_number)
         self.validate_slot_number(slot_number)
+        self.task.log_memory(
+            f'自动召唤模块: 槽位{slot_number}状态识别开始',
+            key=f'auto-summon/slot-{slot_number}',
+            min_interval=0,
+            level='debug',
+        )
         frame = self.get_current_frame() if frame is None else self.normalize_bgr_image(frame)
         region_match = self.locate_slot_region(frame, slot_number) if region_match is None else region_match
         feature_name = self.get_feature_name(slot_number)
@@ -487,6 +556,12 @@ class AutoSummonModule:
             f"区域参考={region_match['reference_state']}, 区域分数={region_match['score']:.3f}, "
             f'已召唤特征={feature_name}, 已召唤特征分数={score:.3f}, 判定状态={state}'
         )
+        self.task.log_memory(
+            f'自动召唤模块: 槽位{slot_number}状态识别结束',
+            key=f'auto-summon/slot-{slot_number}',
+            min_interval=0,
+            level='debug',
+        )
         return {
             'slot_number': slot_number,
             'feature_name': feature_name,
@@ -501,6 +576,11 @@ class AutoSummonModule:
         return self.detect_slot_summon_state(1, frame=frame, region_match=region_match)
 
     def detect_all_slot_summon_states(self, frame=None, suppress_exceptions=False):
+        self.task.log_memory(
+            '自动召唤模块: 全量槽位状态识别开始',
+            key='auto-summon/detect-all',
+            min_interval=0,
+        )
         frame = self.get_current_frame() if frame is None else self.normalize_bgr_image(frame)
         results = {}
         errors = {}
@@ -511,6 +591,11 @@ class AutoSummonModule:
                 errors[slot_number] = error
                 if not suppress_exceptions:
                     raise
+        self.task.log_memory(
+            '自动召唤模块: 全量槽位状态识别结束',
+            key='auto-summon/detect-all',
+            min_interval=0,
+        )
         return frame, results, errors
 
     def send_slot_key(self, slot_number):
@@ -632,13 +717,16 @@ class AutoSummonModule:
             round_index += 1
 
     def run(self):
+        self.task.log_memory('自动召唤模块开始', key='auto-summon/run', min_interval=0)
         if not self.is_main_interface():
             self.task.log_info('自动召唤模块: 当前界面不是主界面，跳过自动召唤模块')
+            self.task.log_memory('自动召唤模块结束', key='auto-summon/run', min_interval=0)
             return
 
         _, results, errors = self.detect_all_slot_summon_states(suppress_exceptions=True)
         if not errors and all(results[slot]['state'] == 'summoned' for slot in self.SLOT_SEQUENCE):
             self.task.log_info('自动召唤模块: 6个槽位均已识别为已召唤，跳过自动召唤模块')
+            self.task.log_memory('自动召唤模块结束', key='auto-summon/run', min_interval=0)
             return
 
         if errors:
@@ -657,3 +745,6 @@ class AutoSummonModule:
 
         self.run_full_summon_sequence(target_slots)
         self.ensure_all_slots_summoned()
+        import gc
+        gc.collect()
+        self.task.log_memory('自动召唤模块结束', key='auto-summon/run', min_interval=0)

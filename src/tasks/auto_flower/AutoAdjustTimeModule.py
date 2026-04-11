@@ -92,6 +92,12 @@ class AutoAdjustTimeModule:
 
     def find_teleport_icon_box_in_frame(self, frame):
         self.task.checkpoint()
+        self.task.log_memory(
+            '调整游戏时间模块: 传送点图标匹配开始',
+            key='auto-adjust-time/teleport-match',
+            min_interval=0,
+            level='debug',
+        )
         for strategy in self.get_teleport_icon_match_strategies():
             self.task.log_info(
                 '调整游戏时间模块: 传送点图标匹配尝试, '
@@ -102,8 +108,20 @@ class AutoAdjustTimeModule:
             teleport_icon_box = self.match_teleport_icon_with_strategy(frame, strategy)
             if teleport_icon_box is not None:
                 self.task.log_info(f"调整游戏时间模块: 传送点图标匹配成功，使用策略: {strategy['name']}")
+                self.task.log_memory(
+                    '调整游戏时间模块: 传送点图标匹配结束',
+                    key='auto-adjust-time/teleport-match',
+                    min_interval=0,
+                    level='debug',
+                )
                 return teleport_icon_box
         self.task.screenshot('auto-adjust-time-teleport-icon-not-found', frame=frame)
+        self.task.log_memory(
+            '调整游戏时间模块: 传送点图标匹配结束',
+            key='auto-adjust-time/teleport-match',
+            min_interval=0,
+            level='debug',
+        )
         return None
 
     def preprocess_template_match_image(self, image, strategy):
@@ -320,6 +338,7 @@ class AutoAdjustTimeModule:
 
     def run(self):
         self.task.log_info('开始执行调整游戏时间模块: M -> 地图 -> 上滚轮 -> ESC -> M -> 传送点 -> 传送')
+        self.task.log_memory('调整游戏时间模块开始', key='auto-adjust-time/run', min_interval=0)
         self.open_map()
         self.scroll_map()
         self.send_key_and_wait('esc')
@@ -327,3 +346,4 @@ class AutoAdjustTimeModule:
         self.open_map()
         self.click_teleport_icon()
         self.click_teleport_text()
+        self.task.log_memory('调整游戏时间模块结束', key='auto-adjust-time/run', min_interval=0)

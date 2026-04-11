@@ -41,6 +41,12 @@ class TestZAutoFlowerTask(TaskTestCase):
 
     config = config
 
+    def setUp(self):
+        self.task.auto_bow_module._tab_text_template = None
+        self.task.auto_bow_module._tab_text_box = None
+        self.task.auto_summon_module._main_interface_indicator_template = None
+        self.task.auto_summon_module._main_interface_indicator_box = None
+
     class DummyTeleportIconBox:
         x = 300
         y = 630
@@ -247,6 +253,20 @@ class TestZAutoFlowerTask(TaskTestCase):
         self.task.auto_summon_module.run()
 
         self.assertEqual([], events)
+
+    def test_auto_summon_module_uses_cached_hotkey_template_before_ocr(self):
+        frame = np.zeros((120, 220, 3), dtype=np.uint8)
+        patch = np.random.default_rng(123).integers(0, 255, size=(12, 30, 3), dtype=np.uint8)
+        frame[50:62, 60:90] = patch
+        hotkey_box = Box(60, 50, 30, 12, name='F2')
+
+        cached = self.task.auto_summon_module.cache_main_interface_indicator([hotkey_box], frame=frame)
+        self.assertTrue(cached)
+
+        self.task.current_bgr_frame = lambda: frame.copy()
+        self.task.ocr = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('ocr should not be called'))
+
+        self.assertTrue(self.task.auto_summon_module.is_main_interface())
 
     def test_auto_summon_module_runs_targeted_sequence_when_any_slot_unsummoned(self):
         events = []
@@ -693,6 +713,23 @@ class TestZAutoFlowerTask(TaskTestCase):
             if loop_index < 10:
                 expected_events.append(('sleep', 2.68))
         self.assertEqual(expected_events, events)
+
+    def test_auto_bow_module_uses_cached_tab_template_before_wait_ocr(self):
+        frame = np.zeros((140, 260, 3), dtype=np.uint8)
+        patch = np.random.default_rng(456).integers(0, 255, size=(10, 24, 3), dtype=np.uint8)
+        frame[70:80, 90:114] = patch
+        tab_box = Box(90, 70, 24, 10, name='Tab')
+
+        cached = self.task.auto_bow_module.cache_tab_text_indicator([tab_box], frame=frame)
+        self.assertTrue(cached)
+
+        self.task.current_bgr_frame = lambda: frame.copy()
+        self.task.wait_ocr = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('wait_ocr should not be called'))
+
+        result = self.task.auto_bow_module.wait_for_tab_text()
+
+        self.assertEqual(1, len(result))
+        self.assertEqual('tab-text-cache', result[0].name)
 
     def test_auto_adjust_time_module_run_sequence(self):
         events = []
